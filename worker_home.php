@@ -132,101 +132,48 @@ $job_result = $conn->query($job_sql);
                 <div class="breadcrumb">Dashboard > Home</div>
             </div>
             
-            <!-- Scheduled Hires Section -->
-            <div class="card">
-                <div class="card-header">
-                    <h2>My Scheduled Jobs</h2>
-                </div>
-                <div class="card-body">
-                    <?php if ($schedule_result->num_rows > 0): ?>
-                        <div class="table-responsive">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Job Title</th>
-                                        <th>Description</th>
-                                        <th>Date</th>
-                                        <th>Time</th>
-                                        <th>Client</th>
-                                        <th>Location</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php while ($schedule = $schedule_result->fetch_assoc()): ?>
-                                        <?php 
-                                            $today = date('Y-m-d');
-                                            $show_map = ($today === $schedule['schedule_date']);
-                                            $date_formatted = date('M d, Y', strtotime($schedule['schedule_date']));
-                                            $time_formatted = date('h:i A', strtotime($schedule['schedule_time']));
-                                        ?>
-                                        <tr>
-                                            <td><strong><?php echo htmlspecialchars($schedule['job_title']); ?></strong></td>
-                                            <td><?php echo htmlspecialchars(substr($schedule['job_description'], 0, 50)) . (strlen($schedule['job_description']) > 50 ? '...' : ''); ?></td>
-                                            <td><?php echo $date_formatted; ?></td>
-                                            <td><?php echo $time_formatted; ?></td>
-                                            <td><?php echo htmlspecialchars($schedule['client_name']); ?></td>
-                                            <td><?php echo htmlspecialchars($schedule['begy']); ?></td>
-                                            <td>
-                                                <div style="display: flex; gap: 0.5rem;">
-                                                    <?php if ($show_map): ?>
-                                                        <a href="https://www.google.com/maps/search/?api=1&query=<?php echo urlencode($schedule['residential_address']); ?>" 
-                                                        target="_blank" class="btn btn-info btn-sm">
-                                                            <i class="fas fa-map-marker-alt"></i> Map
-                                                        </a>
-                                                    <?php endif; ?>
-                                                    <form method="POST">
-                                                        <input type="hidden" name="hire_id" value="<?php echo $schedule['hire_id']; ?>">
-                                                        <button type="submit" name="done_working" class="btn btn-success btn-sm">
-                                                            <i class="fas fa-check"></i> Complete
-                                                        </button>
-                                                    </form>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    <?php endwhile; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <!-- Mobile view job cards -->
-                        <div class="job-grid">
+ <!-- Scheduled Hires Section -->
+<div class="card">
+    <div class="card-header">
+        <h2>My Scheduled Jobs</h2>
+    </div>
+    <div class="card-body">
+        <?php if ($schedule_result->num_rows > 0): ?>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Job Title</th>
+                            <th>Description</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Client</th>
+                            <th>Location</th>
+                            <th>Residential Address</th> <!-- Added Residential Address Column -->
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php while ($schedule = $schedule_result->fetch_assoc()): ?>
                             <?php 
-                            // Reset the result set pointer
-                            $schedule_result->data_seek(0);
-                            while ($schedule = $schedule_result->fetch_assoc()): 
                                 $today = date('Y-m-d');
                                 $show_map = ($today === $schedule['schedule_date']);
                                 $date_formatted = date('M d, Y', strtotime($schedule['schedule_date']));
                                 $time_formatted = date('h:i A', strtotime($schedule['schedule_time']));
                             ?>
-                                <div class="job-card">
-                                    <div class="job-card-header">
-                                        <div class="job-card-title"><?php echo htmlspecialchars($schedule['job_title']); ?></div>
-                                        <div class="badge badge-success">Scheduled</div>
-                                    </div>
-                                    <div class="job-card-body">
-                                        <div>
-                                            <span class="job-card-label">Description</span>
-                                            <span class="job-card-value"><?php echo htmlspecialchars(substr($schedule['job_description'], 0, 100)) . (strlen($schedule['job_description']) > 100 ? '...' : ''); ?></span>
-                                        </div>
-                                        <div>
-                                            <span class="job-card-label">Client</span>
-                                            <span class="job-card-value"><?php echo htmlspecialchars($schedule['client_name']); ?></span>
-                                        </div>
-                                        <div>
-                                            <span class="job-card-label">Schedule</span>
-                                            <span class="job-card-value"><?php echo $date_formatted . ' at ' . $time_formatted; ?></span>
-                                        </div>
-                                        <div>
-                                            <span class="job-card-label">Location</span>
-                                            <span class="job-card-value"><?php echo htmlspecialchars($schedule['begy']); ?></span>
-                                        </div>
-                                    </div>
-                                    <div class="job-card-footer">
+                            <tr>
+                                <td><strong><?php echo htmlspecialchars($schedule['job_title']); ?></strong></td>
+                                <td><?php echo htmlspecialchars(substr($schedule['job_description'], 0, 50)) . (strlen($schedule['job_description']) > 50 ? '...' : ''); ?></td>
+                                <td><?php echo $date_formatted; ?></td>
+                                <td><?php echo $time_formatted; ?></td>
+                                <td><?php echo htmlspecialchars($schedule['client_name']); ?></td>
+                                <td><?php echo htmlspecialchars($schedule['begy']); ?></td>
+                                <td><?php echo htmlspecialchars($schedule['residential_address']); ?></td> <!-- Added Residential Address Data -->
+                                <td>
+                                    <div style="display: flex; gap: 0.5rem;">
                                         <?php if ($show_map): ?>
                                             <a href="https://www.google.com/maps/search/?api=1&query=<?php echo urlencode($schedule['residential_address']); ?>" 
-                                            target="_blank" class="btn btn-info btn-sm" style="margin-right: 0.5rem;">
+                                            target="_blank" class="btn btn-info btn-sm">
                                                 <i class="fas fa-map-marker-alt"></i> Map
                                             </a>
                                         <?php endif; ?>
@@ -237,18 +184,22 @@ $job_result = $conn->query($job_sql);
                                             </button>
                                         </form>
                                     </div>
-                                </div>
-                            <?php endwhile; ?>
-                        </div>
-                    <?php else: ?>
-                        <div class="empty-state" style="text-align: center; padding: 2rem 0;">
-                            <i class="fas fa-calendar-alt" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 1rem;"></i>
-                            <h3>No Scheduled Jobs</h3>
-                            <p>You don't have any scheduled jobs at the moment. Check available job offers below.</p>
-                        </div>
-                    <?php endif; ?>
-                </div>
+                                </td>
+                            </tr>
+                        <?php endwhile; ?>
+                    </tbody>
+                </table>
             </div>
+        <?php else: ?>
+            <div class="empty-state" style="text-align: center; padding: 2rem 0;">
+                <i class="fas fa-calendar-alt" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 1rem;"></i>
+                <h3>No Scheduled Jobs</h3>
+                <p>You don't have any scheduled jobs at the moment. Check available job offers below.</p>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
             
             <!-- Available Jobs Section -->
             <div class="card">

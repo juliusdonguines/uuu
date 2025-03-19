@@ -48,9 +48,7 @@ $comments_stmt = $conn->prepare($comments_sql);
 $comments_stmt->bind_param("i", $worker_id);
 $comments_stmt->execute();
 $comments_result = $comments_stmt->get_result();
-?>
 
-<?php
 // Handling the hire form submission
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['hire_worker'])) {
     if (!isset($_SESSION['client_id'])) {
@@ -59,6 +57,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['hire_worker'])) {
     }
 
     $client_id = $_SESSION['client_id'];
+    $worker_id = intval($_GET['worker_id']); // Correctly retrieve worker_id from URL
     $worker_full_name = $_POST['worker_full_name'];
     $schedule_date = $_POST['schedule_date'];
     $schedule_time = $_POST['schedule_time'];
@@ -73,14 +72,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['hire_worker'])) {
     $client = $client_result->fetch_assoc();
     $client_username = $client['username'];
 
-    // Insert into `hires` table with `full_name`
-    $insert_sql = "INSERT INTO hires (client_id, client_username, full_name, job_id, schedule_date, schedule_time, status, created_at) 
-                   VALUES (?, ?, ?, ?, ?, ?, 'Pending', NOW())";
+    // Insert into `hires` table with `worker_id`
+    $insert_sql = "INSERT INTO hires (client_id, client_username, worker_id, full_name, job_id, schedule_date, schedule_time, status, created_at) 
+                   VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending', NOW())";
     $insert_stmt = $conn->prepare($insert_sql);
-    $insert_stmt->bind_param("ississ", $client_id, $client_username, $worker_full_name, $job_id, $schedule_date, $schedule_time);
+    $insert_stmt->bind_param("isissss", $client_id, $client_username, $worker_id, $worker_full_name, $job_id, $schedule_date, $schedule_time);
 
     if ($insert_stmt->execute()) {
-        echo "<script>alert('Hire request sent successfully!'); window.location='manage_hires.php';</script>";
+        echo "<script>alert('Hire request sent successfully!'); window.location='client_home.php';</script>";
     } else {
         echo "<script>alert('Failed to send hire request. Please try again.');</script>";
     }
@@ -94,7 +93,302 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['hire_worker'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Worker Profile - <?php echo htmlspecialchars($worker['full_name']); ?></title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Worker Profile</h1>
+            <a href="view_services.php" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Services
+            </a>
+        </div>
+
+        <div class="profile-grid">
+            <!-- Left Sidebar -->
+            <div class="profile-sidebar">
+                <img src="uploads/<?php echo htmlspecialchars($worker['picture']); ?>" alt="<?php echo htmlspecialchars($worker['full_name']); ?>" class="profile-image">
+                
+                <div class="profile-info">
+                    <h2 class="profile-name"><?php echo htmlspecialchars($worker['full_name']); ?></h2>
+                    
+                    <div class="profile-rating">
+                        <div class="stars">
+                            <?php
+                                if ($average_rating !== 'No ratings yet') {
+                                    $full_stars = floor($average_rating);
+                                    $half_star = $average_rating - $full_stars > 0.3;
+                                    
+                                    for ($i = 1; $i <= 5; $i++) {
+                                        if ($i <= $full_stars) {
+                                            echo '<i class="fas fa-star"></i>';
+                                        } elseif ($half_star && $i == $full_stars + 1) {
+                                            echo '<i class="fas fa-star-half-alt"></i>';
+                                            $half_star = false;
+                                        } else {
+                                            echo '<i class="far fa-star"></i>';
+                                        }
+                                    }
+                                    echo ' <span>' . $average_rating . '</span>';
+                                } else {
+                                    echo '<i class="far fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i>';
+                                    echo ' <span>No ratings</span>';
+                                }
+                            ?>
+                        </div>
+                        <span class="review-count">(<?php echo $total_reviews; ?> reviews)</span>
+                    </div>
+                    
+                    <div class="profile-detail">
+                        <span class="detail-label">Service Fee:</span>
+                        <span class="detail-value">₱<?php echo number_format($worker['service_fee'], 2); ?></span>
+                    </div>
+                    
+                    <div class="profile-detail">
+                        <span class="detail-label">Contact:</span>
+                        <span class="detail-value"><?php echo htmlspecialchars($worker['contact_num']); ?></span>
+                    </div>
+                    
+                    <div class="profile-detail">
+                        <span class="detail-label">Barangay:</span>
+                        <span class="detail-value">
+                            <?php echo !empty($worker['begy']) 
+                                ? htmlspecialchars($worker['begy']) 
+                                : "<span style='color: var(--gray-400);'>Not specified</span>"; ?>
+                        </span>
+                    </div>
+                    
+                    <div class="profile-detail">
+                        <span class="detail-label">Skills:</span>
+                        <span class="detail-value"><?php echo htmlspecialchars($worker['skills']); ?></span>
+                    </div>
+                    
+                    <?php if (!empty($worker['other_skills'])): ?>
+                    <div class="profile-detail">
+                        <span class="detail-label">Other Skills:</span>
+                        <span class="detail-value"><?php echo htmlspecialchars($worker['other_skills']); ?></span>
+                    </div>
+                    <?php endif; ?>
+                    
+                    <div class="profile-actions">
+                        <?php if (!empty($worker['resume'])): ?>
+                            <a href="uploads/<?php echo htmlspecialchars($worker['resume']); ?>" target="_blank" class="btn btn-outline">
+                                <i class="fas fa-file-alt"></i> View Resume
+                            </a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right Main Content -->
+            <div class="profile-main">
+                <!-- Tabs Container -->
+                <div class="section">
+                    <div class="tab-container">
+                        <div class="tabs">
+                            <div class="tab active" data-tab="hire">Hire Worker</div>
+                            <div class="tab" data-tab="rate">Rate Worker</div>
+                            <div class="tab" data-tab="reviews">Reviews (<?php echo $total_reviews; ?>)</div>
+                        </div>
+                        
+                        <!-- Hire Form Tab -->
+                        <div class="tab-content active" id="hire-form" data-tab="hire">
+                            <h3 class="section-title">
+                                <i class="fas fa-calendar-plus"></i> Schedule a Service
+                            </h3>
+                            
+                            <form action="" method="POST">
+                                <input type="hidden" name="worker_id" value="<?php echo $worker['id']; ?>">
+                                <input type="hidden" name="worker_full_name" value="<?php echo htmlspecialchars($worker['full_name']); ?>">
+                                <input type="hidden" name="job_id" value="1"> <!-- You might want to change this based on your job offerings -->
+                                
+                                <div class="form-group">
+                                    <label for="schedule_date" class="form-label">When do you need this service?</label>
+                                    <input type="date" id="schedule_date" name="schedule_date" class="form-control" required min="<?php echo date('Y-m-d'); ?>">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="schedule_time" class="form-label">What time?</label>
+                                    <input type="time" id="schedule_time" name="schedule_time" class="form-control" required>
+                                </div>
+                                
+                                <button type="submit" name="hire_worker" class="btn btn-primary">
+                                    <i class="fas fa-paper-plane"></i> Send Hire Request
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <!-- Rate Form Tab -->
+                        <div class="tab-content" data-tab="rate">
+                            <h3 class="section-title">
+                                <i class="fas fa-star"></i> Rate Your Experience
+                            </h3>
+                            
+                            <form action="rate_worker.php" method="POST">
+                                <input type="hidden" name="worker_id" value="<?php echo $worker['id']; ?>">
+                                
+                                <div class="form-group">
+                                    <label class="form-label">How would you rate this worker?</label>
+                                    <div class="rating-stars" id="rating-stars">
+                                        <i class="star far fa-star" data-rating="1"></i>
+                                        <i class="star far fa-star" data-rating="2"></i>
+                                        <i class="star far fa-star" data-rating="3"></i>
+                                        <i class="star far fa-star" data-rating="4"></i>
+                                        <i class="star far fa-star" data-rating="5"></i>
+                                    </div>
+                                    <input type="hidden" name="rating" id="selected-rating" value="0" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="comment" class="form-label">Your review</label>
+                                    <textarea id="comment" name="comment" rows="4" class="form-control" placeholder="Share details of your experience with this worker..." required></textarea>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-check"></i> Submit Rating
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <!-- Reviews Tab -->
+                        <div class="tab-content" data-tab="reviews">
+                            <h3 class="section-title">
+                                <i class="fas fa-comments"></i> Client Reviews
+                            </h3>
+                            
+                            <?php if ($comments_result->num_rows > 0): ?>
+                                <div class="comments-list">
+                                    <?php while ($comment = $comments_result->fetch_assoc()): ?>
+                                        <div class="comment-card">
+                                            <div class="comment-header">
+                                                <span class="comment-author"><?php echo htmlspecialchars($comment['full_name']); ?></span>
+                                                <div class="comment-rating">
+                                                    <?php for ($i = 1; $i <= 5; $i++): ?>
+                                                        <?php if ($i <= $comment['rating']): ?>
+                                                            <i class="fas fa-star" style="color: var(--warning);"></i>
+                                                        <?php else: ?>
+                                                            <i class="far fa-star" style="color: var(--gray-300);"></i>
+                                                        <?php endif; ?>
+                                                    <?php endfor; ?>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="comment-body">
+                                                <?php echo htmlspecialchars($comment['comment']); ?>
+                                            </div>
+                                            
+                                            <?php if (!empty($comment['feedback'])): ?>
+                                                <div class="comment-feedback">
+                                                    <strong>Worker's Response:</strong> <?php echo htmlspecialchars($comment['feedback']); ?>
+                                                </div>
+                                            <?php endif; ?>
+                                            
+                                            <div class="comment-date">
+                                                Posted on <?php echo date("F d, Y", strtotime($comment['created_at'])); ?>
+                                            </div>
+                                        </div>
+                                    <?php endwhile; ?>
+                                </div>
+                            <?php else: ?>
+                                <div class="empty-state">
+                                    <i class="far fa-comment-dots"></i>
+                                    <h3>No Reviews Yet</h3>
+                                    <p>Be the first to review this worker!</p>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Tab switching functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabs = document.querySelectorAll('.tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const tabId = tab.getAttribute('data-tab');
+                    
+                    // Remove active class from all tabs
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tabContents.forEach(c => c.classList.remove('active'));
+                    
+                    // Add active class to current tab
+                    tab.classList.add('active');
+                    
+                    // Show the corresponding tab content
+                    const activeContent = document.querySelector(`.tab-content[data-tab="${tabId}"]`);
+                    if (activeContent) {
+                        activeContent.classList.add('active');
+                    }
+                });
+            });
+            
+            // Star rating functionality
+            const stars = document.querySelectorAll('.star');
+            const ratingInput = document.getElementById('selected-rating');
+            
+            stars.forEach(star => {
+                star.addEventListener('mouseover', () => {
+                    const rating = parseInt(star.getAttribute('data-rating'));
+                    highlightStars(rating);
+                });
+                
+                star.addEventListener('click', () => {
+                    const rating = parseInt(star.getAttribute('data-rating'));
+                    ratingInput.value = rating;
+                    
+                    // Update star icons permanently
+                    stars.forEach(s => {
+                        const starRating = parseInt(s.getAttribute('data-rating'));
+                        if (starRating <= rating) {
+                            s.classList.remove('far');
+                            s.classList.add('fas');
+                        } else {
+                            s.classList.remove('fas');
+                            s.classList.add('far');
+                        }
+                    });
+                });
+            });
+            
+            const ratingContainer = document.getElementById('rating-stars');
+            if (ratingContainer) {
+                ratingContainer.addEventListener('mouseout', () => {
+                    const currentRating = parseInt(ratingInput.value);
+                    highlightStars(currentRating);
+                });
+            }
+            
+            function highlightStars(rating) {
+                stars.forEach(s => {
+                    const starRating = parseInt(s.getAttribute('data-rating'));
+                    if (starRating <= rating) {
+                        s.classList.remove('far');
+                        s.classList.add('fas');
+                    } else {
+                        s.classList.remove('fas');
+                        s.classList.add('far');
+                    }
+                });
+            }
+            
+            // Check if there's a hash in the URL to auto-select a tab
+            const hash = window.location.hash.substring(1);
+            if (hash) {
+                const tabToActivate = document.querySelector(`.tab[data-tab="${hash}"]`);
+                if (tabToActivate) {
+                    tabToActivate.click();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
+<style>
         :root {
             --primary: #3b82f6;
             --primary-dark: #2563eb;
@@ -479,298 +773,3 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['hire_worker'])) {
             }
         }
     </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Worker Profile</h1>
-            <a href="available_services.php" class="back-link">
-                <i class="fas fa-arrow-left"></i> Back to Services
-            </a>
-        </div>
-
-        <div class="profile-grid">
-            <!-- Left Sidebar -->
-            <div class="profile-sidebar">
-                <img src="uploads/<?php echo htmlspecialchars($worker['picture']); ?>" alt="<?php echo htmlspecialchars($worker['full_name']); ?>" class="profile-image">
-                
-                <div class="profile-info">
-                    <h2 class="profile-name"><?php echo htmlspecialchars($worker['full_name']); ?></h2>
-                    
-                    <div class="profile-rating">
-                        <div class="stars">
-                            <?php
-                                if ($average_rating !== 'No ratings yet') {
-                                    $full_stars = floor($average_rating);
-                                    $half_star = $average_rating - $full_stars > 0.3;
-                                    
-                                    for ($i = 1; $i <= 5; $i++) {
-                                        if ($i <= $full_stars) {
-                                            echo '<i class="fas fa-star"></i>';
-                                        } elseif ($half_star && $i == $full_stars + 1) {
-                                            echo '<i class="fas fa-star-half-alt"></i>';
-                                            $half_star = false;
-                                        } else {
-                                            echo '<i class="far fa-star"></i>';
-                                        }
-                                    }
-                                    echo ' <span>' . $average_rating . '</span>';
-                                } else {
-                                    echo '<i class="far fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i>';
-                                    echo ' <span>No ratings</span>';
-                                }
-                            ?>
-                        </div>
-                        <span class="review-count">(<?php echo $total_reviews; ?> reviews)</span>
-                    </div>
-                    
-                    <div class="profile-detail">
-                        <span class="detail-label">Service Fee:</span>
-                        <span class="detail-value">₱<?php echo number_format($worker['service_fee'], 2); ?></span>
-                    </div>
-                    
-                    <div class="profile-detail">
-                        <span class="detail-label">Contact:</span>
-                        <span class="detail-value"><?php echo htmlspecialchars($worker['contact_num']); ?></span>
-                    </div>
-                    
-                    <div class="profile-detail">
-                        <span class="detail-label">Barangay:</span>
-                        <span class="detail-value">
-                            <?php echo !empty($worker['begy']) 
-                                ? htmlspecialchars($worker['begy']) 
-                                : "<span style='color: var(--gray-400);'>Not specified</span>"; ?>
-                        </span>
-                    </div>
-                    
-                    <div class="profile-detail">
-                        <span class="detail-label">Skills:</span>
-                        <span class="detail-value"><?php echo htmlspecialchars($worker['skills']); ?></span>
-                    </div>
-                    
-                    <?php if (!empty($worker['other_skills'])): ?>
-                    <div class="profile-detail">
-                        <span class="detail-label">Other Skills:</span>
-                        <span class="detail-value"><?php echo htmlspecialchars($worker['other_skills']); ?></span>
-                    </div>
-                    <?php endif; ?>
-                    
-                    <div class="profile-actions">
-                        <?php if (!empty($worker['resume'])): ?>
-                            <a href="uploads/<?php echo htmlspecialchars($worker['resume']); ?>" target="_blank" class="btn btn-outline">
-                                <i class="fas fa-file-alt"></i> View Resume
-                            </a>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Right Main Content -->
-            <div class="profile-main">
-                <!-- Tabs Container -->
-                <div class="section">
-                    <div class="tab-container">
-                        <div class="tabs">
-                            <div class="tab active" data-tab="hire">Hire Worker</div>
-                            <div class="tab" data-tab="rate">Rate Worker</div>
-                            <div class="tab" data-tab="reviews">Reviews (<?php echo $total_reviews; ?>)</div>
-                        </div>
-                        
-                        <!-- Hire Form Tab -->
-                        <div class="tab-content active" id="hire-form" data-tab="hire">
-                            <h3 class="section-title">
-                                <i class="fas fa-calendar-plus"></i> Schedule a Service
-                            </h3>
-                            
-                            <form action="" method="POST">
-                                <input type="hidden" name="worker_id" value="<?php echo $worker['id']; ?>">
-                                <input type="hidden" name="worker_full_name" value="<?php echo htmlspecialchars($worker['full_name']); ?>">
-                                <input type="hidden" name="job_id" value="1"> <!-- You might want to change this based on your job offerings -->
-                                
-                                <div class="form-group">
-                                    <label for="schedule_date" class="form-label">When do you need this service?</label>
-                                    <input type="date" id="schedule_date" name="schedule_date" class="form-control" required min="<?php echo date('Y-m-d'); ?>">
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label for="schedule_time" class="form-label">What time?</label>
-                                    <input type="time" id="schedule_time" name="schedule_time" class="form-control" required>
-                                </div>
-                                
-                                <button type="submit" name="hire_worker" class="btn btn-primary">
-                                    <i class="fas fa-paper-plane"></i> Send Hire Request
-                                </button>
-                            </form>
-                        </div>
-                        
-                        <!-- Rate Form Tab -->
-                        <div class="tab-content" data-tab="rate">
-                            <h3 class="section-title">
-                                <i class="fas fa-star"></i> Rate Your Experience
-                            </h3>
-                            
-                            <form action="rate_worker.php" method="POST">
-                                <input type="hidden" name="worker_id" value="<?php echo $worker['id']; ?>">
-                                
-                                <div class="form-group">
-                                    <label class="form-label">How would you rate this worker?</label>
-                                    <div class="rating-stars" id="rating-stars">
-                                        <i class="star far fa-star" data-rating="1"></i>
-                                        <i class="star far fa-star" data-rating="2"></i>
-                                        <i class="star far fa-star" data-rating="3"></i>
-                                        <i class="star far fa-star" data-rating="4"></i>
-                                        <i class="star far fa-star" data-rating="5"></i>
-                                    </div>
-                                    <input type="hidden" name="rating" id="selected-rating" value="0" required>
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label for="comment" class="form-label">Your review</label>
-                                    <textarea id="comment" name="comment" rows="4" class="form-control" placeholder="Share details of your experience with this worker..." required></textarea>
-                                </div>
-                                
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-check"></i> Submit Rating
-                                </button>
-                            </form>
-                        </div>
-                        
-                        <!-- Reviews Tab -->
-                        <div class="tab-content" data-tab="reviews">
-                            <h3 class="section-title">
-                                <i class="fas fa-comments"></i> Client Reviews
-                            </h3>
-                            
-                            <?php if ($comments_result->num_rows > 0): ?>
-                                <div class="comments-list">
-                                    <?php while ($comment = $comments_result->fetch_assoc()): ?>
-                                        <div class="comment-card">
-                                            <div class="comment-header">
-                                                <span class="comment-author"><?php echo htmlspecialchars($comment['full_name']); ?></span>
-                                                <div class="comment-rating">
-                                                    <?php for ($i = 1; $i <= 5; $i++): ?>
-                                                        <?php if ($i <= $comment['rating']): ?>
-                                                            <i class="fas fa-star" style="color: var(--warning);"></i>
-                                                        <?php else: ?>
-                                                            <i class="far fa-star" style="color: var(--gray-300);"></i>
-                                                        <?php endif; ?>
-                                                    <?php endfor; ?>
-                                                </div>
-                                            </div>
-                                            
-                                            <div class="comment-body">
-                                                <?php echo htmlspecialchars($comment['comment']); ?>
-                                            </div>
-                                            
-                                            <?php if (!empty($comment['feedback'])): ?>
-                                                <div class="comment-feedback">
-                                                    <strong>Worker's Response:</strong> <?php echo htmlspecialchars($comment['feedback']); ?>
-                                                </div>
-                                            <?php endif; ?>
-                                            
-                                            <div class="comment-date">
-                                                Posted on <?php echo date("F d, Y", strtotime($comment['created_at'])); ?>
-                                            </div>
-                                        </div>
-                                    <?php endwhile; ?>
-                                </div>
-                            <?php else: ?>
-                                <div class="empty-state">
-                                    <i class="far fa-comment-dots"></i>
-                                    <h3>No Reviews Yet</h3>
-                                    <p>Be the first to review this worker!</p>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <script>
-        // Tab switching functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            const tabs = document.querySelectorAll('.tab');
-            const tabContents = document.querySelectorAll('.tab-content');
-            
-            tabs.forEach(tab => {
-                tab.addEventListener('click', () => {
-                    const tabId = tab.getAttribute('data-tab');
-                    
-                    // Remove active class from all tabs
-                    tabs.forEach(t => t.classList.remove('active'));
-                    tabContents.forEach(c => c.classList.remove('active'));
-                    
-                    // Add active class to current tab
-                    tab.classList.add('active');
-                    
-                    // Show the corresponding tab content
-                    const activeContent = document.querySelector(`.tab-content[data-tab="${tabId}"]`);
-                    if (activeContent) {
-                        activeContent.classList.add('active');
-                    }
-                });
-            });
-            
-            // Star rating functionality
-            const stars = document.querySelectorAll('.star');
-            const ratingInput = document.getElementById('selected-rating');
-            
-            stars.forEach(star => {
-                star.addEventListener('mouseover', () => {
-                    const rating = parseInt(star.getAttribute('data-rating'));
-                    highlightStars(rating);
-                });
-                
-                star.addEventListener('click', () => {
-                    const rating = parseInt(star.getAttribute('data-rating'));
-                    ratingInput.value = rating;
-                    
-                    // Update star icons permanently
-                    stars.forEach(s => {
-                        const starRating = parseInt(s.getAttribute('data-rating'));
-                        if (starRating <= rating) {
-                            s.classList.remove('far');
-                            s.classList.add('fas');
-                        } else {
-                            s.classList.remove('fas');
-                            s.classList.add('far');
-                        }
-                    });
-                });
-            });
-            
-            const ratingContainer = document.getElementById('rating-stars');
-            if (ratingContainer) {
-                ratingContainer.addEventListener('mouseout', () => {
-                    const currentRating = parseInt(ratingInput.value);
-                    highlightStars(currentRating);
-                });
-            }
-            
-            function highlightStars(rating) {
-                stars.forEach(s => {
-                    const starRating = parseInt(s.getAttribute('data-rating'));
-                    if (starRating <= rating) {
-                        s.classList.remove('far');
-                        s.classList.add('fas');
-                    } else {
-                        s.classList.remove('fas');
-                        s.classList.add('far');
-                    }
-                });
-            }
-            
-            // Check if there's a hash in the URL to auto-select a tab
-            const hash = window.location.hash.substring(1);
-            if (hash) {
-                const tabToActivate = document.querySelector(`.tab[data-tab="${hash}"]`);
-                if (tabToActivate) {
-                    tabToActivate.click();
-                }
-            }
-        });
-    </script>
-</body>
-</html>

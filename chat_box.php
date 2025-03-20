@@ -20,7 +20,7 @@ if (isset($_SESSION['client_username'])) {
 $receiver_username = isset($_GET['receiver']) ? trim($_GET['receiver']) : '';
 
 // Ensure receiver exists
-$receiver_query = "SELECT user_id, full_name FROM $receiver_table WHERE username = ?";
+$receiver_query = "SELECT id, full_name FROM $receiver_table WHERE username = ?";
 $stmt = $conn->prepare($receiver_query);
 $stmt->bind_param("s", $receiver_username);
 $stmt->execute();
@@ -31,18 +31,18 @@ if ($receiver_result->num_rows === 0) {
     exit(); 
 } else { 
     $receiver_data = $receiver_result->fetch_assoc(); 
-    $receiver_id = $receiver_data['user_id'];
+    $receiver_id = $receiver_data['id'];
     $receiver_name = htmlspecialchars($receiver_data['full_name']);
 }
 
 // Get sender ID from their respective table
-$sender_query = "SELECT user_id FROM $receiver_table WHERE username = ?";
+$sender_query = "SELECT id FROM $receiver_table WHERE username = ?";
 $stmt = $conn->prepare($sender_query);
 $stmt->bind_param("s", $sender);
 $stmt->execute();
 $sender_result = $stmt->get_result();
 $sender_data = $sender_result->fetch_assoc();
-$sender_id = $sender_data['user_id'];
+$sender_id = $sender_data['id'];
 
 // Handle message submission
 if ($_SERVER["REQUEST_METHOD"] == "POST") { 

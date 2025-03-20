@@ -6,10 +6,12 @@ include('db.php');
 if (isset($_SESSION['client_username'])) { 
     $sender = $_SESSION['client_username']; 
     $receiver_table = "workers"; 
+    $sender_table = "clients"; 
     $account_type = "worker"; 
 } elseif (isset($_SESSION['worker_username'])) { 
     $sender = $_SESSION['worker_username']; 
     $receiver_table = "clients"; 
+    $sender_table = "workers"; 
     $account_type = "client"; 
 } else { 
     echo "<script>alert('Unauthorized access. Please log in.'); window.location='login.php';</script>"; 
@@ -24,23 +26,29 @@ $receiver_query = "SELECT id, full_name FROM $receiver_table WHERE username = ?"
 $stmt = $conn->prepare($receiver_query);
 $stmt->bind_param("s", $receiver_username);
 $stmt->execute();
-$receiver_result = $stmt->get_result(); 
+$receiver_result = $stmt->get_result();
 
-if ($receiver_result->num_rows === 0) { 
-    echo "<script>alert('Receiver not found.'); window.location='home.php';</script>"; 
-    exit(); 
-} else { 
-    $receiver_data = $receiver_result->fetch_assoc(); 
+if ($receiver_result->num_rows === 0) {
+    echo "<script>alert('Receiver not found.'); window.location='home.php';</script>";
+    exit();
+} else {
+    $receiver_data = $receiver_result->fetch_assoc();
     $receiver_id = $receiver_data['id'];
     $receiver_name = htmlspecialchars($receiver_data['full_name']);
 }
 
 // Get sender ID from their respective table
-$sender_query = "SELECT id FROM $receiver_table WHERE username = ?";
+$sender_query = "SELECT id FROM $sender_table WHERE username = ?";
 $stmt = $conn->prepare($sender_query);
 $stmt->bind_param("s", $sender);
 $stmt->execute();
 $sender_result = $stmt->get_result();
+
+if ($sender_result->num_rows === 0) {
+    echo "<script>alert('Sender not found. Please log in again.'); window.location='login.php';</script>";
+    exit();
+}
+
 $sender_data = $sender_result->fetch_assoc();
 $sender_id = $sender_data['id'];
 
@@ -57,12 +65,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 // Fetch chat messages
 $chat_sql = "SELECT * FROM chat_messages 
-             WHERE ((sender_id = ? AND receiver_id = ? AND account_type = ?) 
-                OR (sender_id = ? AND receiver_id = ? AND account_type = ?)) 
+             WHERE (sender_id = ? AND receiver_id = ?) 
+                OR (sender_id = ? AND receiver_id = ?) 
              ORDER BY created_at ASC"; 
 
 $stmt = $conn->prepare($chat_sql);
-$stmt->bind_param("iisiii", $sender_id, $receiver_id, $account_type, $receiver_id, $sender_id, $account_type);
+$stmt->bind_param("iiii", $sender_id, $receiver_id, $receiver_id, $sender_id);  // ✅ Correct bind_param()
 $stmt->execute();
 $chat_result = $stmt->get_result();
 ?>

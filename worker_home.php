@@ -53,7 +53,17 @@ $job_sql = "SELECT j.id, j.job_title, j.job_description, j.schedule_date, j.sche
              JOIN clients c ON j.client_id = c.id
              WHERE j.status = 'Pending'";
 $job_result = $conn->query($job_sql);
+// Fetch notifications from the hires table
+$notif_sql = "
+    SELECT client_username, schedule_date, schedule_time
+    FROM hires 
+    WHERE worker_id = ? 
+    ORDER BY created_at DESC";
 
+$notif_stmt = $conn->prepare($notif_sql);
+$notif_stmt->bind_param("i", $worker_id);
+$notif_stmt->execute();
+$notif_result = $notif_stmt->get_result();;
 ?>
 
 <!DOCTYPE html>
@@ -77,7 +87,7 @@ $job_result = $conn->query($job_sql);
                 <li class="nav-item">
                     <a href="worker_home.php" class="nav-link active">
                         <i class="fas fa-home"></i>
-                        <span>Dashboard</span>
+                        <span>Home</span>
                     </a>
                 </li>
                 <li class="nav-item">
@@ -200,6 +210,87 @@ $job_result = $conn->query($job_sql);
     </div>
 </div>
 
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Notifications</h2>
+    </div>
+    <div class="card-body">
+        <?php if ($notif_result->num_rows > 0): ?>
+            <div class="notification-list">
+                <?php while ($notif = $notif_result->fetch_assoc()): ?>
+                    <div class="notification-item">
+                        <div class="notification-message">
+                            <?php 
+                                if (isset($notif['message'])) {
+                                    echo htmlspecialchars($notif['message']);
+                                } else {
+                                    echo "Someone wants to hire you, Check manage hires to accept or cancel.";
+                                }
+                            ?>
+                        </div>
+                        <div class="notification-time">
+                            <?php 
+                                echo isset($notif['created_at']) 
+                                    ? date("F j, Y, g:i A", strtotime($notif['created_at'])) 
+                                    : "";
+                            ?>
+                        </div>
+                    </div>
+                <?php endwhile; ?>
+            </div>
+        <?php else: ?>
+            <div class="empty-state">
+                <p>No notifications yet.</p>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Appointment Notification</h2>
+    </div>
+    <div class="card-body">
+        <?php
+        // Fetch worker notifications
+        $notif_sql = "SELECT message, created_at FROM notification_worker WHERE worker_id = ?";
+        $notif_stmt = $conn->prepare($notif_sql);
+        $notif_stmt->bind_param("i", $worker_id);
+        $notif_stmt->execute();
+        $notif_result = $notif_stmt->get_result();
+        ?>
+
+        <?php if ($notif_result->num_rows > 0): ?>
+            <div class="notification-list">
+                <?php while ($notif = $notif_result->fetch_assoc()): ?>
+                    <div class="notification-item">
+                        <div class="notification-message">
+                            <?php 
+                                echo isset($notif['message']) ? htmlspecialchars($notif['message']) : "You have a new notification.";
+                            ?>
+                        </div>
+                        <div class="notification-time">
+                            <?php 
+                                echo isset($notif['created_at']) && !empty($notif['created_at']) 
+                                    ? date("F j, Y, g:i A", strtotime($notif['created_at'])) 
+                                    : "Unknown Date";
+                            ?>
+                        </div>
+                    </div>
+                <?php endwhile; ?>
+            </div>
+        <?php else: ?>
+            <div class="empty-state">
+                <p>No notifications yet.</p>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
+
+
+
+
             
             <!-- Available Jobs Section -->
             <div class="card">
@@ -245,6 +336,9 @@ $job_result = $conn->query($job_sql);
                                 </tbody>
                             </table>
                         </div>
+                        
+
+                        
                         
                         <!-- Mobile view job cards -->
                         <div class="job-grid">

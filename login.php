@@ -653,6 +653,7 @@
             animation-delay: 0.3s;
         }
     </style>
+
 </head>
 <body>
     <header>
@@ -671,8 +672,8 @@
                     <a href="#services">Services</a>
                     <a href="#video">Success Stories</a>
                     <a href="#contact">Contact</a>
-                    <a href="login_worker.php" class="btn-login">Login</a>
-                    <a href="register_worker.php" class="btn-register">Register</a>
+                    <a href="login_worker.php" class="btn-login">Login Worker</a>
+                    <a href="login_client.php" class="btn-register">Login Client</a>
                 </nav>
             </div>
         </div>
@@ -751,23 +752,196 @@
             </div>
         </div>
     </section>
+
+    <?php
+include('db.php');
+
+// Fetch available workers
+$workers_sql = "SELECT w.*, AVG(r.rating) AS avg_rating, COUNT(r.id) AS total_reviews 
+                FROM workers w 
+                LEFT JOIN ratings r ON w.id = r.worker_id 
+                GROUP BY w.id 
+                LIMIT 3"; // Limit to 3 workers
+$workers_result = $conn->query($workers_sql);
+?>
+
     
-    <section class="video-section" id="video">
-        <div class="container">
-            <div class="highlight-header">
-                <h2>Success Stories</h2>
-                <p class="section-subtitle">Hear from the people whose lives have been transformed through PESO Los Baños programs and services.</p>
-            </div>
-            <div class="video-container fade-in">
-                <div class="video-wrapper">
-                    <div class="video-placeholder" id="videoPlaceholder">
-                        <i class="fas fa-play-circle"></i>
+<style>
+    .workers-section {
+        background-color: #f4f7f6;
+        padding: 60px 0;
+    }
+
+    .section-title {
+        text-align: center;
+        color: #2c3e50;
+        margin-bottom: 40px;
+        font-size: 2.5rem;
+        font-weight: 700;
+    }
+
+    .workers-grid {
+        display: flex;
+        justify-content: center;
+        gap: 30px;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .worker-card {
+        background-color: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        width: 350px;
+        overflow: hidden;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        border: 1px solid #e0e0e0;
+    }
+
+    .worker-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+    }
+
+    .worker-card-header {
+        position: relative;
+        height: 250px;
+        background-color: #e9ecef;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+    }
+
+    .worker-card-header img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.3s ease;
+    }
+
+    .worker-card:hover .worker-card-header img {
+        transform: scale(1.1);
+    }
+
+    .worker-card-content {
+        padding: 25px;
+        text-align: center;
+    }
+
+    .worker-card-content h3 {
+        color: #2c3e50;
+        margin-bottom: 10px;
+        font-size: 1.4rem;
+        font-weight: 700;
+    }
+
+    .worker-rating {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+
+    .worker-rating .stars {
+        margin-right: 10px;
+    }
+
+    .worker-rating .stars i {
+        color: #f39c12;
+        font-size: 1.2rem;
+    }
+
+    .worker-details {
+        background-color: #f9f9f9;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+
+    .worker-details p {
+        margin: 8px 0;
+        color: #34495e;
+        font-size: 0.95rem;
+    }
+
+    .btn-primary {
+        display: inline-block;
+        background-color: #3498db;
+        color: white;
+        padding: 12px 25px;
+        border-radius: 30px;
+        text-decoration: none;
+        transition: background-color 0.3s ease, transform 0.2s ease;
+        font-weight: 600;
+    }
+
+    .btn-primary:hover {
+        background-color: #2980b9;
+        transform: scale(1.05);
+    }
+
+    @media (max-width: 1024px) {
+        .workers-grid {
+            flex-direction: column;
+            align-items: center;
+        }
+    }
+</style>
+
+<section class="workers-section">
+    <div class="container">
+        <h2 class="section-title">Meet Our Skilled Workers</h2>
+        <div class="workers-grid">
+            <?php while ($worker = $workers_result->fetch_assoc()): ?>
+                <div class="worker-card">
+                    <div class="worker-card-header">
+                        <?php if (!empty($worker['']) && file_exists('uploads/' . $worker[''])): ?>
+                            <img src="uploads/<?php echo htmlspecialchars($worker['']); ?>" 
+                                 alt="<?php echo htmlspecialchars($worker['full_name'] ?? 'Unknown'); ?>">
+                        <?php else: ?>
+                            <img src="download.png" 
+                                 alt="">
+                        <?php endif; ?>
                     </div>
-                    <!-- Video will be inserted here via JavaScript -->
+                    <div class="worker-card-content">
+                        <h3><?php echo htmlspecialchars($worker['full_name']); ?></h3>
+                        
+                        <div class="worker-rating">
+                            <div class="stars">
+                                <?php
+                                    $avg_rating = $worker['avg_rating'] ?? 0;
+                                    $full_stars = floor($avg_rating);
+                                    $half_star = $avg_rating - $full_stars > 0.3;
+                                    
+                                    for ($i = 1; $i <= 5; $i++) {
+                                        if ($i <= $full_stars) {
+                                            echo '<i class="fas fa-star"></i>';
+                                        } elseif ($half_star && $i == $full_stars + 1) {
+                                            echo '<i class="fas fa-star-half-alt"></i>';
+                                            $half_star = false;
+                                        } else {
+                                            echo '<i class="far fa-star"></i>';
+                                        }
+                                    }
+                                ?>
+                            </div>
+                            <span>(<?php echo $worker['total_reviews'] ?? 0; ?> reviews)</span>
+                        </div>
+                        
+                        <div class="worker-details">
+                            <p><strong>Skills:</strong> <?php echo htmlspecialchars($worker['skills'] ?? 'No skills listed'); ?></p>
+                            <p><strong>Service Fee:</strong> ₱<?php echo number_format($worker['service_fee'] ?? 0, 2); ?></p>
+                            <p><strong>Barangay:</strong> <?php echo htmlspecialchars($worker['begy'] ?? 'Not specified'); ?></p>
+                        </div>
+                        
+                    
+                    </div>
                 </div>
-            </div>
+            <?php endwhile; ?>
         </div>
-    </section>
+    </div>
+</section>
     
     <section class="stats-section">
         <div class="stats-container">
